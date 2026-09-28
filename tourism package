@@ -1,0 +1,1742 @@
+"""
+Tourism Package Management System
+A professional Flask web application to manage travel packages
+and customer bookings.
+"""
+
+from flask import Flask, render_template, request, redirect, url_for, flash
+import sqlite3
+import os
+import re
+import random
+from datetime import datetime
+
+
+# ============================================================================
+# FLASK CONFIGURATION
+# ============================================================================
+
+app = Flask(__name__)
+
+app.secret_key = "change-this-secret-key-in-production"
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DB_PATH = os.path.join(BASE_DIR, "tourism.db")
+
+
+# ============================================================================
+# DATABASE CONNECTION
+# ============================================================================
+
+def get_db_connection():
+
+    conn = sqlite3.connect(DB_PATH)
+
+    conn.row_factory = sqlite3.Row
+
+    conn.execute("PRAGMA foreign_keys = ON")
+
+    return conn
+
+
+# ============================================================================
+# DATABASE COLUMN CHECK
+# ============================================================================
+
+def ensure_database_columns():
+
+    conn = get_db_connection()
+
+    # ------------------------------------------------------------------------
+    # PACKAGE COLUMNS
+    # ------------------------------------------------------------------------
+
+    package_columns = {
+
+        "availability": "TEXT DEFAULT 'Available'",
+
+        "famous_temple": "TEXT",
+        "famous_food": "TEXT",
+        "famous_dance": "TEXT",
+        "famous_festival": "TEXT",
+
+        "contact_name": "TEXT",
+        "contact_phone": "TEXT",
+        "contact_email": "TEXT",
+        "contact_address": "TEXT",
+
+        # 0 = visible
+        # 1 = deleted / hidden
+        "is_deleted": "INTEGER DEFAULT 0",
+    }
+
+    existing_columns = {
+        row["name"]
+        for row in conn.execute(
+            "PRAGMA table_info(packages)"
+        ).fetchall()
+    }
+
+    for column_name, column_type in package_columns.items():
+
+        if column_name not in existing_columns:
+
+            conn.execute(
+                f"ALTER TABLE packages ADD COLUMN {column_name} {column_type}"
+            )
+
+    # ------------------------------------------------------------------------
+    # BOOKING COLUMNS
+    # ------------------------------------------------------------------------
+
+    booking_columns = {
+
+        "status": "TEXT DEFAULT 'Confirmed'",
+
+        "refund_amount": "REAL DEFAULT 0",
+
+        "cancellation_date": "TEXT",
+    }
+
+    existing_booking_columns = {
+        row["name"]
+        for row in conn.execute(
+            "PRAGMA table_info(bookings)"
+        ).fetchall()
+    }
+
+    for column_name, column_type in booking_columns.items():
+
+        if column_name not in existing_booking_columns:
+
+            conn.execute(
+                f"ALTER TABLE bookings ADD COLUMN {column_name} {column_type}"
+            )
+
+    conn.commit()
+
+    conn.close()
+
+
+# ============================================================================
+# INITIALIZE DATABASE
+# ============================================================================
+
+def init_db():
+
+    conn = get_db_connection()
+
+    # ------------------------------------------------------------------------
+    # PACKAGES TABLE
+    # ------------------------------------------------------------------------
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS packages (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            package_name TEXT NOT NULL,
+            destination TEXT NOT NULL,
+            duration TEXT NOT NULL,
+            price TEXT NOT NULL,
+
+            accommodation TEXT,
+            transport TEXT,
+            meals TEXT,
+            sightseeing TEXT,
+            activities TEXT,
+            description TEXT,
+            image_url TEXT,
+
+            availability TEXT DEFAULT 'Available',
+
+            famous_temple TEXT,
+            famous_food TEXT,
+            famous_dance TEXT,
+            famous_festival TEXT,
+
+            contact_name TEXT,
+            contact_phone TEXT,
+            contact_email TEXT,
+            contact_address TEXT,
+
+            is_deleted INTEGER DEFAULT 0
+        )
+        """
+    )
+
+    # ------------------------------------------------------------------------
+    # BOOKINGS TABLE
+    # ------------------------------------------------------------------------
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS bookings (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            package_id INTEGER NOT NULL,
+
+            name TEXT NOT NULL,
+            mobile TEXT NOT NULL,
+            address TEXT NOT NULL,
+            map_link TEXT,
+
+            schedule_date TEXT NOT NULL,
+            persons INTEGER NOT NULL,
+
+            total_bill REAL NOT NULL,
+
+            payment_method TEXT NOT NULL,
+
+            booking_date TEXT NOT NULL,
+
+            status TEXT DEFAULT 'Confirmed',
+
+            refund_amount REAL DEFAULT 0,
+
+            cancellation_date TEXT,
+
+            FOREIGN KEY (package_id)
+            REFERENCES packages(id)
+        )
+        """
+    )
+
+    # ------------------------------------------------------------------------
+    # FEEDBACK TABLE
+    #
+    # One feedback per booking.
+    # ------------------------------------------------------------------------
+
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS feedback (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            booking_id INTEGER NOT NULL UNIQUE,
+
+            package_id INTEGER NOT NULL,
+
+            customer_name TEXT NOT NULL,
+
+            rating INTEGER NOT NULL,
+
+            comment TEXT NOT NULL,
+
+            feedback_date TEXT NOT NULL,
+
+            FOREIGN KEY (booking_id)
+            REFERENCES bookings(id)
+        )
+        """
+    )
+
+    conn.commit()
+
+    conn.close()
+
+    # ------------------------------------------------------------------------
+    # UPDATE OLD DATABASE
+    # ------------------------------------------------------------------------
+
+    ensure_database_columns()
+
+    # ------------------------------------------------------------------------
+    # ADD SAMPLE DATA IF DATABASE IS EMPTY
+    # ------------------------------------------------------------------------
+
+    conn = get_db_connection()
+
+    count = conn.execute(
+        "SELECT COUNT(*) FROM packages"
+    ).fetchone()[0]
+
+    if count == 0:
+
+        sample_packages = [
+
+            (
+                "Hyderabad Heritage Tour",
+                "Hyderabad",
+                "3 Days / 2 Nights",
+                "₹7,500/person",
+                "3-Star Hotel",
+                "AC Cab",
+                "Breakfast + Dinner",
+                "Charminar, Golconda Fort",
+                "City Tour, Shopping",
+                "Walk through 400 years of Nizami history — "
+                "from the iconic Charminar to the majestic Golconda "
+                "Fort, with time set aside for the famous pearl "
+                "and bangle markets of the old city.",
+                "https://www.holidify.com/images/bgImages/DELHI.jpg",
+                "Available",
+                "Charminar Mosque",
+                "Hyderabadi Biryani",
+                "Perini Shivatandavam",
+                "Bonalu"
+            ),
+
+            (
+                "Hyderabad Royal Getaway",
+                "Hyderabad",
+                "4 Days / 3 Nights",
+                "₹12,999/person",
+                "5-Star Hotel",
+                "AC Cab + Airport Transfers",
+                "All Meals Included",
+                "Chowmahalla Palace, Falaknuma Palace, Salar Jung Museum",
+                "Heritage Walk, Boat Ride at Hussain Sagar, Shopping",
+                "A premium escape through royal Hyderabad — "
+                "stay like the Nizams, cruise across Hussain Sagar "
+                "Lake, and explore the city's finest palaces and "
+                "museums in comfort.",
+                "https://www.thrillophilia.com/blog/wp-content/uploads/2025/08/kerala-boat-ride-2-1024x683.jpg",
+                "Available",
+                "Mecca Masjid",
+                "Hyderabadi Haleem",
+                "Dappu Dance",
+                "Bathukamma"
+            ),
+
+            (
+                "Hyderabad Food & Culture Trail",
+                "Hyderabad",
+                "2 Days / 1 Night",
+                "₹4,999/person",
+                "Budget Hotel",
+                "Non-AC Cab",
+                "Breakfast Only",
+                "Charminar, Laad Bazaar, Ramoji Film City",
+                "Street Food Walk, Biryani Tasting, Bangle Shopping",
+                "A short, flavour-packed trip built for foodies — "
+                "dive into the old city's legendary biryani, kebabs "
+                "and Irani chai.",
+                "https://th.bing.com/th/id/R.69d6068df1302c49a9f2353c7204ff2f",
+                "Available",
+                "Chilkur Balaji Temple",
+                "Hyderabadi Biryani",
+                "Lambadi Dance",
+                "Ramzan"
+            )
+        ]
+
+        conn.executemany(
+            """
+            INSERT INTO packages
+            (
+                package_name,
+                destination,
+                duration,
+                price,
+                accommodation,
+                transport,
+                meals,
+                sightseeing,
+                activities,
+                description,
+                image_url,
+                availability,
+                famous_temple,
+                famous_food,
+                famous_dance,
+                famous_festival,
+                is_deleted
+            )
+
+            VALUES
+            (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, 0
+            )
+            """,
+            sample_packages
+        )
+
+        conn.commit()
+
+    conn.close()
+
+
+# ============================================================================
+# COLLECT PACKAGE FORM DATA
+# ============================================================================
+
+def _collect_form_data(form):
+
+    return {
+
+        "package_name": form.get(
+            "package_name",
+            ""
+        ).strip(),
+
+        "destination": form.get(
+            "destination",
+            ""
+        ).strip(),
+
+        "duration": form.get(
+            "duration",
+            ""
+        ).strip(),
+
+        "price": form.get(
+            "price",
+            ""
+        ).strip(),
+
+        "accommodation": form.get(
+            "accommodation",
+            ""
+        ).strip(),
+
+        "transport": form.get(
+            "transport",
+            ""
+        ).strip(),
+
+        "meals": form.get(
+            "meals",
+            ""
+        ).strip(),
+
+        "sightseeing": form.get(
+            "sightseeing",
+            ""
+        ).strip(),
+
+        "activities": form.get(
+            "activities",
+            ""
+        ).strip(),
+
+        "description": form.get(
+            "description",
+            ""
+        ).strip(),
+
+        "image_url": form.get(
+            "image_url",
+            ""
+        ).strip(),
+
+        "availability": form.get(
+            "availability",
+            "Available"
+        ).strip(),
+
+        "famous_temple": form.get(
+            "famous_temple",
+            ""
+        ).strip(),
+
+        "famous_food": form.get(
+            "famous_food",
+            ""
+        ).strip(),
+
+        "famous_dance": form.get(
+            "famous_dance",
+            ""
+        ).strip(),
+
+        "famous_festival": form.get(
+            "famous_festival",
+            ""
+        ).strip(),
+    }
+
+
+# ============================================================================
+# HOME PAGE
+# ============================================================================
+
+@app.route("/")
+def index():
+
+    conn = get_db_connection()
+
+    search = request.args.get(
+        "search",
+        ""
+    ).strip()
+
+    if search:
+
+        packages = conn.execute(
+            """
+            SELECT *
+            FROM packages
+
+            WHERE is_deleted = 0
+
+            AND (
+                package_name LIKE ?
+                OR destination LIKE ?
+            )
+
+            ORDER BY id DESC
+            """,
+            (
+                f"%{search}%",
+                f"%{search}%"
+            )
+        ).fetchall()
+
+    else:
+
+        packages = conn.execute(
+            """
+            SELECT *
+            FROM packages
+
+            WHERE is_deleted = 0
+
+            ORDER BY id DESC
+            """
+        ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "index.html",
+        packages=packages,
+        search=search
+    )
+
+
+# ============================================================================
+# PACKAGE DETAILS
+# ============================================================================
+
+@app.route("/package/<int:package_id>")
+def package_detail(package_id):
+
+    conn = get_db_connection()
+
+    package = conn.execute(
+        """
+        SELECT *
+        FROM packages
+
+        WHERE id = ?
+        AND is_deleted = 0
+        """,
+        (package_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if package is None:
+
+        flash(
+            "Package not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    return render_template(
+        "detail.html",
+        package=package
+    )
+
+
+# ============================================================================
+# ADD PACKAGE
+# ============================================================================
+
+@app.route("/add", methods=["GET", "POST"])
+def add_package():
+
+    if request.method == "POST":
+
+        data = _collect_form_data(request.form)
+
+        conn = get_db_connection()
+
+        conn.execute(
+            """
+            INSERT INTO packages
+            (
+                package_name,
+                destination,
+                duration,
+                price,
+
+                accommodation,
+                transport,
+                meals,
+                sightseeing,
+                activities,
+
+                description,
+                image_url,
+                availability,
+
+                famous_temple,
+                famous_food,
+                famous_dance,
+                famous_festival,
+
+                is_deleted
+            )
+
+            VALUES
+            (
+                :package_name,
+                :destination,
+                :duration,
+                :price,
+
+                :accommodation,
+                :transport,
+                :meals,
+                :sightseeing,
+                :activities,
+
+                :description,
+                :image_url,
+                :availability,
+
+                :famous_temple,
+                :famous_food,
+                :famous_dance,
+                :famous_festival,
+
+                0
+            )
+            """,
+            data
+        )
+
+        conn.commit()
+
+        conn.close()
+
+        flash(
+            "Package added successfully!",
+            "success"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    return render_template(
+        "add.html"
+    )
+
+
+# ============================================================================
+# EDIT PACKAGE
+# ============================================================================
+
+@app.route(
+    "/edit/<int:package_id>",
+    methods=["GET", "POST"]
+)
+def edit_package(package_id):
+
+    conn = get_db_connection()
+
+    package = conn.execute(
+        """
+        SELECT *
+        FROM packages
+
+        WHERE id = ?
+
+        AND is_deleted = 0
+        """,
+        (package_id,)
+    ).fetchone()
+
+    if package is None:
+
+        conn.close()
+
+        flash(
+            "Package not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    # ========================================================================
+    # SAVE EDITED PACKAGE
+    # ========================================================================
+
+    if request.method == "POST":
+
+        data = _collect_form_data(request.form)
+
+        # --------------------------------------------------------------------
+        # CONTACT INFORMATION
+        # --------------------------------------------------------------------
+
+        contact_name = request.form.get(
+            "contact_name",
+            ""
+        ).strip()
+
+        contact_phone = request.form.get(
+            "contact_phone",
+            ""
+        ).strip()
+
+        contact_email = request.form.get(
+            "contact_email",
+            ""
+        ).strip()
+
+        contact_address = request.form.get(
+            "contact_address",
+            ""
+        ).strip()
+
+        # --------------------------------------------------------------------
+        # UPDATE
+        # --------------------------------------------------------------------
+
+        conn.execute(
+            """
+            UPDATE packages
+
+            SET
+
+                package_name = ?,
+                destination = ?,
+                duration = ?,
+                price = ?,
+
+                accommodation = ?,
+                transport = ?,
+                meals = ?,
+                sightseeing = ?,
+                activities = ?,
+
+                description = ?,
+                image_url = ?,
+                availability = ?,
+
+                famous_temple = ?,
+                famous_food = ?,
+                famous_dance = ?,
+                famous_festival = ?,
+
+                contact_name = ?,
+                contact_phone = ?,
+                contact_email = ?,
+                contact_address = ?
+
+            WHERE id = ?
+            """,
+
+            (
+                data["package_name"],
+                data["destination"],
+                data["duration"],
+                data["price"],
+
+                data["accommodation"],
+                data["transport"],
+                data["meals"],
+                data["sightseeing"],
+                data["activities"],
+
+                data["description"],
+                data["image_url"],
+                data["availability"],
+
+                data["famous_temple"],
+                data["famous_food"],
+                data["famous_dance"],
+                data["famous_festival"],
+
+                contact_name,
+                contact_phone,
+                contact_email,
+                contact_address,
+
+                package_id
+            )
+        )
+
+        conn.commit()
+
+        conn.close()
+
+        flash(
+            "Package updated successfully!",
+            "success"
+        )
+
+        # IMPORTANT:
+        # detail.html is a template.
+        # package_detail is the Flask endpoint.
+        return redirect(
+            url_for(
+                "package_detail",
+                package_id=package_id
+            )
+        )
+
+    # ========================================================================
+    # SHOW EDIT PAGE
+    # ========================================================================
+
+    conn.close()
+
+    return render_template(
+        "edit.html",
+        package=package
+    )
+
+
+# ============================================================================
+# BOOK PACKAGE
+# ============================================================================
+
+@app.route(
+    "/book/<int:package_id>",
+    methods=["GET", "POST"]
+)
+def book_package(package_id):
+
+    conn = get_db_connection()
+
+    package = conn.execute(
+        """
+        SELECT *
+        FROM packages
+
+        WHERE id = ?
+
+        AND is_deleted = 0
+        """,
+        (package_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if package is None:
+
+        flash(
+            "Package not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    if package["availability"] != "Available":
+
+        flash(
+            "This package is currently unavailable.",
+            "warning"
+        )
+
+        return redirect(
+            url_for(
+                "package_detail",
+                package_id=package_id
+            )
+        )
+
+    # ------------------------------------------------------------------------
+    # CONVERT PRICE
+    # ------------------------------------------------------------------------
+
+    price_text = package["price"] or ""
+
+    price_match = re.search(
+        r"[\d,]+",
+        price_text
+    )
+
+    if price_match:
+
+        price_per_person = float(
+            price_match.group().replace(",", "")
+        )
+
+    else:
+
+        price_per_person = 0
+
+    # ------------------------------------------------------------------------
+    # POST
+    # ------------------------------------------------------------------------
+
+    if request.method == "POST":
+
+        name = request.form.get(
+            "name",
+            ""
+        ).strip()
+
+        mobile = request.form.get(
+            "mobile",
+            ""
+        ).strip()
+
+        address = request.form.get(
+            "address",
+            ""
+        ).strip()
+
+        map_link = request.form.get(
+            "map_link",
+            ""
+        ).strip()
+
+        schedule_date = request.form.get(
+            "schedule_date",
+            ""
+        ).strip()
+
+        payment_method = request.form.get(
+            "payment_method",
+            ""
+        ).strip()
+
+        try:
+
+            persons = int(
+                request.form.get(
+                    "persons",
+                    "1"
+                )
+            )
+
+        except ValueError:
+
+            persons = 1
+
+        # --------------------------------------------------------------------
+        # VALIDATION
+        # --------------------------------------------------------------------
+
+        if not name:
+
+            flash(
+                "Please enter your name.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        if not mobile:
+
+            flash(
+                "Please enter your mobile number.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        if not mobile.isdigit() or len(mobile) != 10:
+
+            flash(
+                "Please enter a valid 10-digit mobile number.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        if not address:
+
+            flash(
+                "Please enter your address.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        if not schedule_date:
+
+            flash(
+                "Please select a schedule date.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        if persons < 1:
+
+            flash(
+                "Number of persons must be at least 1.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        if payment_method not in [
+            "UPI",
+            "Credit Card"
+        ]:
+
+            flash(
+                "Please select a valid payment method.",
+                "danger"
+            )
+
+            return render_template(
+                "booking.html",
+                package=package,
+                price_per_person=price_per_person
+            )
+
+        # --------------------------------------------------------------------
+        # TOTAL
+        # --------------------------------------------------------------------
+
+        total_bill = price_per_person * persons
+
+        # --------------------------------------------------------------------
+        # SAVE BOOKING
+        # --------------------------------------------------------------------
+
+        conn = get_db_connection()
+
+        cursor = conn.execute(
+            """
+            INSERT INTO bookings
+            (
+                package_id,
+                name,
+                mobile,
+                address,
+                map_link,
+                schedule_date,
+                persons,
+                total_bill,
+                payment_method,
+                booking_date,
+                status,
+                refund_amount,
+                cancellation_date
+            )
+
+            VALUES
+            (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?
+            )
+            """,
+
+            (
+                package_id,
+                name,
+                mobile,
+                address,
+                map_link,
+                schedule_date,
+                persons,
+                total_bill,
+                payment_method,
+                datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+                "Confirmed",
+                0,
+                None
+            )
+        )
+
+        booking_id = cursor.lastrowid
+
+        conn.commit()
+
+        conn.close()
+
+        return redirect(
+            url_for(
+                "booking_pass",
+                booking_id=booking_id
+            )
+        )
+
+    return render_template(
+        "booking.html",
+        package=package,
+        price_per_person=price_per_person
+    )
+
+
+# ============================================================================
+# BOOKING PASS
+# ============================================================================
+
+@app.route("/booking-pass/<int:booking_id>")
+def booking_pass(booking_id):
+
+    conn = get_db_connection()
+
+    # LEFT JOIN is important.
+    # It allows old booking passes to remain available even if
+    # the package has been removed from the public website.
+
+    booking = conn.execute(
+        """
+        SELECT
+
+            bookings.*,
+
+            packages.package_name,
+            packages.destination,
+            packages.duration
+
+        FROM bookings
+
+        LEFT JOIN packages
+        ON bookings.package_id = packages.id
+
+        WHERE bookings.id = ?
+        """,
+        (booking_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if booking is None:
+
+        flash(
+            "Booking not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    contact_number = "9" + "".join(
+        str(random.randint(0, 9))
+        for _ in range(9)
+    )
+
+    return render_template(
+        "booking_pass.html",
+        booking=booking,
+        contact_number=contact_number
+    )
+
+
+# ============================================================================
+# BOOKING HISTORY
+# ============================================================================
+
+@app.route("/booking-history")
+def booking_history():
+
+    conn = get_db_connection()
+
+    bookings = conn.execute(
+        """
+        SELECT
+
+            bookings.*,
+
+            packages.package_name,
+            packages.destination,
+            packages.duration,
+            packages.image_url,
+
+            feedback.id AS feedback_id
+
+        FROM bookings
+
+        LEFT JOIN packages
+        ON bookings.package_id = packages.id
+
+        LEFT JOIN feedback
+        ON feedback.booking_id = bookings.id
+
+        ORDER BY bookings.id DESC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "booking_history.html",
+        bookings=bookings
+    )
+
+
+# ============================================================================
+# FEEDBACK
+# ============================================================================
+
+@app.route(
+    "/feedback/<int:booking_id>",
+    methods=["GET", "POST"]
+)
+def feedback(booking_id):
+
+    conn = get_db_connection()
+
+    # ------------------------------------------------------------------------
+    # FIND BOOKING
+    # ------------------------------------------------------------------------
+
+    booking = conn.execute(
+        """
+        SELECT
+
+            bookings.*,
+
+            packages.package_name,
+            packages.destination,
+            packages.duration,
+            packages.image_url
+
+        FROM bookings
+
+        LEFT JOIN packages
+        ON bookings.package_id = packages.id
+
+        WHERE bookings.id = ?
+        """,
+        (booking_id,)
+    ).fetchone()
+
+    if booking is None:
+
+        conn.close()
+
+        flash(
+            "Booking not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("booking_history")
+        )
+
+    # ------------------------------------------------------------------------
+    # CANCELLED BOOKINGS
+    # ------------------------------------------------------------------------
+
+    if booking["status"] == "Cancelled":
+
+        conn.close()
+
+        flash(
+            "Feedback cannot be submitted for a cancelled booking.",
+            "warning"
+        )
+
+        return redirect(
+            url_for("booking_history")
+        )
+
+    # ------------------------------------------------------------------------
+    # CHECK EXISTING FEEDBACK
+    # ------------------------------------------------------------------------
+
+    existing_feedback = conn.execute(
+        """
+        SELECT *
+        FROM feedback
+
+        WHERE booking_id = ?
+        """,
+        (booking_id,)
+    ).fetchone()
+
+    if existing_feedback is not None:
+
+        conn.close()
+
+        flash(
+            "Feedback has already been submitted for this booking.",
+            "info"
+        )
+
+        return redirect(
+            url_for("feedback_list")
+        )
+
+    # ------------------------------------------------------------------------
+    # SUBMIT FEEDBACK
+    # ------------------------------------------------------------------------
+
+    if request.method == "POST":
+
+        rating_text = request.form.get(
+            "rating",
+            ""
+        ).strip()
+
+        comment = request.form.get(
+            "comment",
+            ""
+        ).strip()
+
+        try:
+
+            rating = int(rating_text)
+
+        except (ValueError, TypeError):
+
+            rating = 0
+
+        # --------------------------------------------------------------------
+        # RATING VALIDATION
+        # --------------------------------------------------------------------
+
+        if rating < 1 or rating > 5:
+
+            conn.close()
+
+            flash(
+                "Please select a rating from 1 to 5 stars.",
+                "danger"
+            )
+
+            return render_template(
+                "feedback.html",
+                booking=booking,
+                feedbacks=[],
+                form_mode=True
+            )
+
+        # --------------------------------------------------------------------
+        # COMMENT VALIDATION
+        # --------------------------------------------------------------------
+
+        if not comment:
+
+            conn.close()
+
+            flash(
+                "Please write your feedback.",
+                "danger"
+            )
+
+            return render_template(
+                "feedback.html",
+                booking=booking,
+                feedbacks=[],
+                form_mode=True
+            )
+
+        if len(comment) > 1000:
+
+            conn.close()
+
+            flash(
+                "Feedback must be 1000 characters or less.",
+                "danger"
+            )
+
+            return render_template(
+                "feedback.html",
+                booking=booking,
+                feedbacks=[],
+                form_mode=True
+            )
+
+        # --------------------------------------------------------------------
+        # SAVE FEEDBACK
+        # --------------------------------------------------------------------
+
+        try:
+
+            conn.execute(
+                """
+                INSERT INTO feedback
+                (
+                    booking_id,
+                    package_id,
+                    customer_name,
+                    rating,
+                    comment,
+                    feedback_date
+                )
+
+                VALUES
+                (
+                    ?, ?, ?, ?, ?, ?
+                )
+                """,
+                (
+                    booking["id"],
+                    booking["package_id"],
+                    booking["name"],
+                    rating,
+                    comment,
+                    datetime.now().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                )
+            )
+
+            conn.commit()
+
+            conn.close()
+
+            flash(
+                "Thank you! Your feedback has been submitted successfully.",
+                "success"
+            )
+
+            return redirect(
+                url_for("feedback_list")
+            )
+
+        except sqlite3.IntegrityError:
+
+            conn.close()
+
+            flash(
+                "Feedback has already been submitted for this booking.",
+                "warning"
+            )
+
+            return redirect(
+                url_for("feedback_list")
+            )
+
+    conn.close()
+
+    return render_template(
+        "feedback.html",
+        booking=booking,
+        feedbacks=[],
+        form_mode=True
+    )
+
+
+# ============================================================================
+# ALL FEEDBACK
+# ============================================================================
+
+@app.route("/feedback")
+def feedback_list():
+
+    conn = get_db_connection()
+
+    feedbacks = conn.execute(
+        """
+        SELECT
+
+            feedback.*,
+
+            packages.package_name,
+            packages.destination
+
+        FROM feedback
+
+        LEFT JOIN packages
+        ON feedback.package_id = packages.id
+
+        ORDER BY feedback.id DESC
+        """
+    ).fetchall()
+
+    conn.close()
+
+    return render_template(
+        "feedback.html",
+        booking=None,
+        feedbacks=feedbacks,
+        form_mode=False
+    )
+
+
+# ============================================================================
+# CANCEL BOOKING
+# ============================================================================
+
+@app.route(
+    "/cancel-booking/<int:booking_id>",
+    methods=["POST"]
+)
+def cancel_booking(booking_id):
+
+    conn = get_db_connection()
+
+    booking = conn.execute(
+        """
+        SELECT *
+        FROM bookings
+
+        WHERE id = ?
+        """,
+        (booking_id,)
+    ).fetchone()
+
+    if booking is None:
+
+        conn.close()
+
+        flash(
+            "Booking not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    if booking["status"] == "Cancelled":
+
+        conn.close()
+
+        flash(
+            "This booking has already been cancelled.",
+            "warning"
+        )
+
+        return redirect(
+            url_for(
+                "booking_pass",
+                booking_id=booking_id
+            )
+        )
+
+    # ------------------------------------------------------------------------
+    # CALCULATE DAYS REMAINING
+    # ------------------------------------------------------------------------
+
+    try:
+
+        travel_date = datetime.strptime(
+            booking["schedule_date"],
+            "%Y-%m-%d"
+        ).date()
+
+        today = datetime.now().date()
+
+        days_remaining = (
+            travel_date - today
+        ).days
+
+    except (ValueError, TypeError):
+
+        days_remaining = 0
+
+    # ------------------------------------------------------------------------
+    # CANCELLATION POLICY
+    # ------------------------------------------------------------------------
+
+    if days_remaining > 7:
+
+        fee_percent = 10
+
+    elif days_remaining >= 3:
+
+        fee_percent = 25
+
+    elif days_remaining >= 1:
+
+        fee_percent = 50
+
+    else:
+
+        fee_percent = 100
+
+    # ------------------------------------------------------------------------
+    # CALCULATE REFUND
+    # ------------------------------------------------------------------------
+
+    total_bill = float(
+        booking["total_bill"] or 0
+    )
+
+    cancellation_fee = (
+        total_bill * fee_percent / 100
+    )
+
+    refund_amount = (
+        total_bill - cancellation_fee
+    )
+
+    if refund_amount < 0:
+
+        refund_amount = 0
+
+    cancellation_date = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    # ------------------------------------------------------------------------
+    # UPDATE BOOKING
+    # ------------------------------------------------------------------------
+
+    conn.execute(
+        """
+        UPDATE bookings
+
+        SET
+
+            status = ?,
+            refund_amount = ?,
+            cancellation_date = ?
+
+        WHERE id = ?
+        """,
+        (
+            "Cancelled",
+            refund_amount,
+            cancellation_date,
+            booking_id
+        )
+    )
+
+    conn.commit()
+
+    conn.close()
+
+    flash(
+        f"Booking cancelled successfully. "
+        f"Cancellation fee: {fee_percent}%. "
+        f"Refund amount: ₹{refund_amount:,.2f}",
+        "success"
+    )
+
+    return redirect(
+        url_for(
+            "booking_pass",
+            booking_id=booking_id
+        )
+    )
+
+
+# ============================================================================
+# DELETE PACKAGE
+# ============================================================================
+#
+# IMPORTANT:
+#
+# We DO NOT physically delete the package.
+#
+# Instead:
+#
+# is_deleted = 1
+#
+# This means:
+#
+# - Package disappears from home page
+# - Package cannot be booked anymore
+# - Existing booking history remains
+# - Existing booking passes remain
+# - Feedback remains
+# - Foreign key errors are avoided
+#
+# ============================================================================
+
+@app.route(
+    "/delete/<int:package_id>",
+    methods=["POST"]
+)
+def delete_package(package_id):
+
+    conn = get_db_connection()
+
+    # ------------------------------------------------------------------------
+    # CHECK PACKAGE
+    # ------------------------------------------------------------------------
+
+    package = conn.execute(
+        """
+        SELECT *
+        FROM packages
+
+        WHERE id = ?
+        """,
+        (package_id,)
+    ).fetchone()
+
+    if package is None:
+
+        conn.close()
+
+        flash(
+            "Package not found.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    # ------------------------------------------------------------------------
+    # SOFT DELETE
+    # ------------------------------------------------------------------------
+
+    conn.execute(
+        """
+        UPDATE packages
+
+        SET
+            is_deleted = 1,
+            availability = 'Unavailable'
+
+        WHERE id = ?
+        """,
+        (package_id,)
+    )
+
+    conn.commit()
+
+    conn.close()
+
+    flash(
+        f"Package '{package['package_name']}' was removed successfully. "
+        f"Existing booking history has been preserved.",
+        "info"
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+# ============================================================================
+# START APPLICATION
+# ============================================================================
+
+if __name__ == "__main__":
+
+    init_db()
+
+    app.run(
+        debug=True
+    )
