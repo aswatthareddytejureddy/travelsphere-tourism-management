@@ -1,0 +1,350 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Book {{ package.package_name }} | Wanderlust Hyderabad
+{% endblock %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-8">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-header bg-warning text-dark p-4">
+                    <h3 class="fw-bold mb-1">
+                        Book Your Package
+                    </h3>
+
+                    <p class="mb-0">
+                        {{ package.package_name }}
+                    </p>
+                </div>
+
+
+                <div class="card-body p-4 p-md-5">
+
+                    <!-- PACKAGE INFORMATION -->
+
+                    <div class="alert alert-light border">
+
+                        <h5 class="fw-bold">
+                            {{ package.package_name }}
+                        </h5>
+
+                        <p class="mb-1">
+                            <strong>Destination:</strong>
+                            {{ package.destination }}
+                        </p>
+
+                        <p class="mb-1">
+                            <strong>Duration:</strong>
+                            {{ package.duration }}
+                        </p>
+
+                        <p class="mb-0">
+                            <strong>Price per person:</strong>
+                            ₹{{ "{:,.0f}".format(price_per_person) }}
+                        </p>
+
+                    </div>
+
+
+                    <form method="POST">
+
+                        <!-- NAME -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="name"
+                                class="form-label fw-semibold"
+                            >
+                                Full Name
+                            </label>
+
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="name"
+                                name="name"
+                                placeholder="Enter your full name"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- MOBILE -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="mobile"
+                                class="form-label fw-semibold"
+                            >
+                                Mobile Number
+                            </label>
+
+                            <input
+                                type="tel"
+                                class="form-control"
+                                id="mobile"
+                                name="mobile"
+                                placeholder="Enter your mobile number"
+                                pattern="[0-9]{10}"
+                                maxlength="10"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- ADDRESS -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="address"
+                                class="form-label fw-semibold"
+                            >
+                                Address
+                            </label>
+
+                            <textarea
+                                class="form-control"
+                                id="address"
+                                name="address"
+                                rows="3"
+                                placeholder="Enter your address"
+                                required
+                            ></textarea>
+
+                        </div>
+
+
+                        <!-- GOOGLE MAP -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="map_link"
+                                class="form-label fw-semibold"
+                            >
+                                Google Maps Link
+                            </label>
+
+                            <input
+                                type="url"
+                                class="form-control"
+                                id="map_link"
+                                name="map_link"
+                                placeholder="Paste your Google Maps location link"
+                            >
+
+                            <div class="form-text">
+                                Open Google Maps → Share → Copy link → Paste here.
+                            </div>
+
+                        </div>
+
+
+                        <!-- DATE -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="schedule_date"
+                                class="form-label fw-semibold"
+                            >
+                                Schedule Date
+                            </label>
+
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="schedule_date"
+                                name="schedule_date"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- NUMBER OF PERSONS -->
+
+                        <div class="mb-3">
+
+                            <label
+                                for="persons"
+                                class="form-label fw-semibold"
+                            >
+                                Number of Persons
+                            </label>
+
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="persons"
+                                name="persons"
+                                value="1"
+                                min="1"
+                                required
+                            >
+
+                        </div>
+
+
+                        <!-- TOTAL BILL -->
+
+                        <div class="mb-4">
+
+                            <label
+                                for="total_bill"
+                                class="form-label fw-semibold"
+                            >
+                                Total Bill
+                            </label>
+
+                            <input
+                                type="text"
+                                class="form-control fw-bold"
+                                id="total_bill"
+                                value="₹{{ "{:,.0f}".format(price_per_person) }}"
+                                readonly
+                            >
+
+                        </div>
+
+
+                        <!-- PAYMENT METHOD -->
+
+                        <div class="mb-4">
+
+                            <label class="form-label fw-semibold">
+                                Payment Method
+                            </label>
+
+                            <div class="row">
+
+                                <div class="col-md-6 mb-2">
+
+                                    <div class="form-check border rounded p-3">
+
+                                        <input
+                                            class="form-check-input"
+                                            type="radio"
+                                            name="payment_method"
+                                            id="upi"
+                                            value="UPI"
+                                            required
+                                        >
+
+                                        <label
+                                            class="form-check-label"
+                                            for="upi"
+                                        >
+                                            <i class="bi bi-phone"></i>
+                                            UPI
+                                        </label>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div class="col-md-6 mb-2">
+
+                                    <div class="form-check border rounded p-3">
+
+                                        <input
+                                            class="form-check-input"
+                                            type="radio"
+                                            name="payment_method"
+                                            id="creditcard"
+                                            value="Credit Card"
+                                        >
+
+                                        <label
+                                            class="form-check-label"
+                                            for="creditcard"
+                                        >
+                                            <i class="bi bi-credit-card"></i>
+                                            Credit Card
+                                        </label>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- CONFIRM -->
+
+                        <div class="d-flex justify-content-end gap-2">
+
+                            <a
+                                href="{{ url_for('package_detail', package_id=package.id) }}"
+                                class="btn btn-outline-secondary"
+                            >
+                                Cancel
+                            </a>
+
+                            <button
+                                type="submit"
+                                class="btn btn-warning fw-bold px-4"
+                            >
+                                <i class="bi bi-check-circle me-1"></i>
+                                Confirm Booking
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- TOTAL BILL CALCULATION -->
+
+<script>
+
+const personsInput = document.getElementById("persons");
+const totalBill = document.getElementById("total_bill");
+
+const pricePerPerson = {{ price_per_person }};
+
+personsInput.addEventListener("input", function () {
+
+    let persons = parseInt(this.value) || 1;
+
+    if (persons < 1) {
+        persons = 1;
+    }
+
+    let total = persons * pricePerPerson;
+
+    totalBill.value =
+        "₹" + total.toLocaleString("en-IN");
+
+});
+
+</script>
+
+{% endblock %}
+```

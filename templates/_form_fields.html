@@ -1,0 +1,133 @@
+{% set p = package if package is defined else None %}
+<div class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Package Name</label>
+    <input type="text" name="package_name" class="form-control" required
+           value="{{ p.package_name if p else '' }}" placeholder="e.g. Hyderabad Heritage Tour">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Destination</label>
+    <input type="text" name="destination" class="form-control" required
+           value="{{ p.destination if p else 'Hyderabad' }}" placeholder="e.g. Hyderabad">
+  </div>
+<div class="row g-3">
+
+    <!-- Famous Temple -->
+    <div class="col-md-6">
+        <label for="famous_temple" class="form-label fw-semibold">
+            <i class="bi bi-building me-1"></i> Famous Temple
+        </label>
+        <input
+            type="text"
+            class="form-control"
+            id="famous_temple"
+            name="famous_temple"
+            value="{{ package.famous_temple if package else '' }}"
+            placeholder="e.g. Banke Bihari Temple">
+    </div>
+
+    <!-- Famous Food -->
+    <div class="col-md-6">
+        <label for="famous_food" class="form-label fw-semibold">
+            <i class="bi bi-egg-fried me-1"></i> Famous Food
+        </label>
+        <input
+            type="text"
+            class="form-control"
+            id="famous_food"
+            name="famous_food"
+            value="{{ package.famous_food if package else '' }}"
+            placeholder="e.g. Mathura Peda">
+    </div>
+
+    <!-- Traditional Dance -->
+    <div class="col-md-6">
+        <label for="famous_dance" class="form-label fw-semibold">
+            <i class="bi bi-person-walking me-1"></i> Traditional Dance
+        </label>
+        <input
+            type="text"
+            class="form-control"
+            id="famous_dance"
+            name="famous_dance"
+            value="{{ package.famous_dance if package else '' }}"
+            placeholder="e.g. Kathak">
+    </div>
+
+    <!-- Festival -->
+    <div class="col-md-6">
+        <label for="famous_festival" class="form-label fw-semibold">
+            <i class="bi bi-calendar-event me-1"></i> Famous Festival
+        </label>
+        <input
+            type="text"
+            class="form-control"
+            id="famous_festival"
+            name="famous_festival"
+            value="{{ package.famous_festival if package else '' }}"
+            placeholder="e.g. Holi">
+    </div>
+
+</div>
+
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Duration</label>
+    <input type="text" name="duration" class="form-control" required
+           value="{{ p.duration if p else '' }}" placeholder="e.g. 3 Days / 2 Nights">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Price</label>
+    <input type="text" name="price" class="form-control" required
+           value="{{ p.price if p else '' }}" placeholder="e.g. ₹7,500/person">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Accommodation</label>
+    <input type="text" name="accommodation" class="form-control"
+           value="{{ p.accommodation if p else '' }}" placeholder="e.g. 3-Star Hotel">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Transport</label>
+    <input type="text" name="transport" class="form-control"
+           value="{{ p.transport if p else '' }}" placeholder="e.g. AC Cab">
+  </div>
+
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Meals</label>
+    <input type="text" name="meals" class="form-control"
+           value="{{ p.meals if p else '' }}" placeholder="e.g. Breakfast + Dinner">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label fw-semibold">Availability</label>
+    <select name="availability" class="form-select">
+      <option value="Available" {{ "selected" if p and p.availability == "Available" }}>Available</option>
+      <option value="Sold Out" {{ "selected" if p and p.availability == "Sold Out" }}>Sold Out</option>
+      <option value="Coming Soon" {{ "selected" if p and p.availability == "Coming Soon" }}>Coming Soon</option>
+    </select>
+  </div>
+
+  <div class="col-12">
+    <label class="form-label fw-semibold">Sightseeing</label>
+    <input type="text" name="sightseeing" class="form-control"
+           value="{{ p.sightseeing if p else '' }}" placeholder="e.g. Charminar, Golconda Fort">
+  </div>
+
+  <div class="col-12">
+    <label class="form-label fw-semibold">Activities</label>
+    <input type="text" name="activities" class="form-control"
+           value="{{ p.activities if p else '' }}" placeholder="e.g. City Tour, Shopping">
+  </div>
+
+  <div class="col-12">
+    <label class="form-label fw-semibold">Description</label>
+    <textarea name="description" class="form-control" rows="4"
+              placeholder="Short, appealing description of the package">{{ p.description if p else '' }}</textarea>
+  </div>
+
+  <div class="col-12">
+    <label class="form-label fw-semibold">Image URL</label>
+    <input type="url" name="image_url" class="form-control"
+           value="{{ p.image_url if p else '' }}" placeholder="https://...">
+    <small class="text-muted">Paste a direct image link (e.g. from Unsplash) relevant to the destination.</small>
+  </div>
+</div>

@@ -1,0 +1,773 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+Booking Pass | TravelSphere
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-8">
+
+            <div class="card border-0 shadow-lg">
+
+
+                <!-- =====================================================
+                     PASS HEADER
+                ====================================================== -->
+
+                {% if booking.status == 'Cancelled' %}
+
+                    <div class="card-header bg-danger text-white text-center p-4">
+
+                        <i
+                            class="bi bi-x-circle-fill"
+                            style="font-size: 45px;"
+                        ></i>
+
+                        <h2 class="fw-bold mt-2">
+                            Booking Cancelled
+                        </h2>
+
+                        <p class="mb-0">
+                            Your tourism package booking has been cancelled.
+                        </p>
+
+                    </div>
+
+                {% else %}
+
+                    <div class="card-header bg-success text-white text-center p-4">
+
+                        <i
+                            class="bi bi-check-circle-fill"
+                            style="font-size: 45px;"
+                        ></i>
+
+                        <h2 class="fw-bold mt-2">
+                            Booking Confirmed!
+                        </h2>
+
+                        <p class="mb-0">
+                            Your tourism package has been successfully booked.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+
+                <!-- =====================================================
+                     PASS BODY
+                ====================================================== -->
+
+                <div class="card-body p-4 p-md-5">
+
+
+                    <!-- =================================================
+                         BOOKING PASS TITLE
+                    ================================================== -->
+
+                    <div class="text-center mb-4">
+
+                        <h3 class="fw-bold">
+                            TOURISM BOOKING PASS
+                        </h3>
+
+                        <p class="text-muted">
+                            TravelSphere
+                        </p>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         BOOKING ID + STATUS
+                    ================================================== -->
+
+                    <div class="row g-3 mb-4">
+
+                        <div class="col-md-6">
+
+                            <div class="alert alert-warning text-center mb-0">
+
+                                <strong>
+                                    Booking ID:
+                                </strong>
+
+                                #{{ booking.id }}
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="col-md-6">
+
+                            {% if booking.status == 'Cancelled' %}
+
+                                <div class="alert alert-danger text-center mb-0">
+
+                                    <strong>
+                                        Status:
+                                    </strong>
+
+                                    <span class="fw-bold">
+                                        Cancelled
+                                    </span>
+
+                                </div>
+
+                            {% else %}
+
+                                <div class="alert alert-success text-center mb-0">
+
+                                    <strong>
+                                        Status:
+                                    </strong>
+
+                                    <span class="fw-bold">
+                                        Confirmed
+                                    </span>
+
+                                </div>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         PACKAGE DETAILS
+                    ================================================== -->
+
+                    <h5 class="fw-bold border-bottom pb-2">
+                        Package Details
+                    </h5>
+
+                    <div class="row mb-4">
+
+                        <div class="col-sm-6 mb-2">
+
+                            <strong>
+                                Package:
+                            </strong>
+
+                            <br>
+
+                            {{ booking.package_name }}
+
+                        </div>
+
+
+                        <div class="col-sm-6 mb-2">
+
+                            <strong>
+                                Destination:
+                            </strong>
+
+                            <br>
+
+                            {{ booking.destination }}
+
+                        </div>
+
+
+                        {% if booking.duration %}
+
+                        <div class="col-sm-6 mb-2">
+
+                            <strong>
+                                Duration:
+                            </strong>
+
+                            <br>
+
+                            {{ booking.duration }}
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- =================================================
+                         CUSTOMER DETAILS
+                    ================================================== -->
+
+                    <h5 class="fw-bold border-bottom pb-2">
+
+                        Customer Details
+
+                    </h5>
+
+                    <div class="row mb-4">
+
+
+                        <div class="col-sm-6 mb-3">
+
+                            <strong>
+                                Name
+                            </strong>
+
+                            <br>
+
+                            {{ booking.name }}
+
+                        </div>
+
+
+                        <div class="col-sm-6 mb-3">
+
+                            <strong>
+                                Mobile Number
+                            </strong>
+
+                            <br>
+
+                            {{ booking.mobile }}
+
+                        </div>
+
+
+                        <div class="col-12 mb-3">
+
+                            <strong>
+                                Address
+                            </strong>
+
+                            <br>
+
+                            {{ booking.address }}
+
+                        </div>
+
+
+                        {% if booking.map_link %}
+
+                        <div class="col-12 mb-3">
+
+                            <strong>
+                                Google Maps Location
+                            </strong>
+
+                            <br>
+
+                            <a
+                                href="{{ booking.map_link }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                View Location on Google Maps
+                            </a>
+
+                        </div>
+
+                        {% endif %}
+
+
+                    </div>
+
+
+                    <!-- =================================================
+                         TRAVEL DETAILS
+                    ================================================== -->
+
+                    <h5 class="fw-bold border-bottom pb-2">
+
+                        Travel Details
+
+                    </h5>
+
+                    <div class="row mb-4">
+
+
+                        <div class="col-sm-6 mb-3">
+
+                            <strong>
+                                Schedule Date
+                            </strong>
+
+                            <br>
+
+                            {{ booking.schedule_date }}
+
+                        </div>
+
+
+                        <div class="col-sm-6 mb-3">
+
+                            <strong>
+                                Number of Persons
+                            </strong>
+
+                            <br>
+
+                            {{ booking.persons }}
+
+                        </div>
+
+
+                        <div class="col-sm-6 mb-3">
+
+                            <strong>
+                                Total Bill
+                            </strong>
+
+                            <br>
+
+                            <span class="text-success fw-bold fs-5">
+
+                                ₹{{ "{:,.0f}".format(booking.total_bill) }}
+
+                            </span>
+
+                        </div>
+
+
+                        <div class="col-sm-6 mb-3">
+
+                            <strong>
+                                Payment Method
+                            </strong>
+
+                            <br>
+
+                            {{ booking.payment_method }}
+
+                        </div>
+
+
+                    </div>
+
+
+                    <!-- =================================================
+                         CANCELLATION INFORMATION
+                    ================================================== -->
+
+                    {% if booking.status == 'Cancelled' %}
+
+                    <div class="card border-danger mb-4">
+
+                        <div class="card-body">
+
+                            <h5 class="fw-bold text-danger mb-3">
+
+                                <i class="bi bi-x-circle-fill me-2"></i>
+
+                                Cancellation Details
+
+                            </h5>
+
+
+                            <div class="row">
+
+
+                                <div class="col-sm-6 mb-3">
+
+                                    <strong>
+                                        Cancellation Date
+                                    </strong>
+
+                                    <br>
+
+                                    <span class="text-muted">
+
+                                        {{ booking.cancellation_date or "Not available" }}
+
+                                    </span>
+
+                                </div>
+
+
+                                <div class="col-sm-6 mb-3">
+
+                                    <strong>
+                                        Original Amount
+                                    </strong>
+
+                                    <br>
+
+                                    ₹{{ "{:,.2f}".format(booking.total_bill or 0) }}
+
+                                </div>
+
+
+                                <div class="col-sm-6 mb-3">
+
+                                    <strong>
+                                        Cancellation Fee
+                                    </strong>
+
+                                    <br>
+
+                                    <span class="text-danger fw-bold">
+
+                                        ₹{{ "{:,.2f}".format(cancellation_fee or 0) }}
+
+                                    </span>
+
+                                </div>
+
+
+                                <div class="col-sm-6 mb-3">
+
+                                    <strong>
+                                        Refund Amount
+                                    </strong>
+
+                                    <br>
+
+                                    <span class="text-success fw-bold fs-5">
+
+                                        ₹{{ "{:,.2f}".format(booking.refund_amount or 0) }}
+
+                                    </span>
+
+                                </div>
+
+
+                            </div>
+
+
+                            <div class="alert alert-danger mb-0">
+
+                                <i class="bi bi-info-circle me-1"></i>
+
+                                This booking has been cancelled successfully.
+                                The refund amount shown above is the amount
+                                calculated after applying the cancellation
+                                policy.
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    {% endif %}
+
+
+                    <!-- =================================================
+                         CANCELLATION POLICY
+                    ================================================== -->
+
+                    {% if booking.status == 'Confirmed' %}
+
+                    <div class="card border-warning mb-4">
+
+                        <div class="card-body">
+
+                            <h5 class="fw-bold mb-3">
+
+                                <i class="bi bi-shield-check text-warning me-2"></i>
+
+                                Cancellation Policy
+
+                            </h5>
+
+
+                            <div class="table-responsive">
+
+                                <table class="table table-bordered align-middle mb-3">
+
+                                    <thead class="table-warning">
+
+                                        <tr>
+
+                                            <th>
+                                                Cancellation Time
+                                            </th>
+
+                                            <th>
+                                                Cancellation Fee
+                                            </th>
+
+                                            <th>
+                                                Refund
+                                            </th>
+
+                                        </tr>
+
+                                    </thead>
+
+
+                                    <tbody>
+
+                                        <tr>
+
+                                            <td>
+                                                More than 7 days before travel
+                                            </td>
+
+                                            <td>
+                                                10%
+                                            </td>
+
+                                            <td>
+                                                90%
+                                            </td>
+
+                                        </tr>
+
+
+                                        <tr>
+
+                                            <td>
+                                                3–7 days before travel
+                                            </td>
+
+                                            <td>
+                                                25%
+                                            </td>
+
+                                            <td>
+                                                75%
+                                            </td>
+
+                                        </tr>
+
+
+                                        <tr>
+
+                                            <td>
+                                                1–2 days before travel
+                                            </td>
+
+                                            <td>
+                                                50%
+                                            </td>
+
+                                            <td>
+                                                50%
+                                            </td>
+
+                                        </tr>
+
+
+                                        <tr>
+
+                                            <td>
+                                                Same day / travel date passed
+                                            </td>
+
+                                            <td>
+                                                100%
+                                            </td>
+
+                                            <td>
+                                                0%
+                                            </td>
+
+                                        </tr>
+
+                                    </tbody>
+
+                                </table>
+
+                            </div>
+
+
+                            {% if cancellation_policy is defined %}
+
+                            <div class="alert alert-warning mb-0">
+
+                                <strong>
+                                    Current cancellation charge:
+                                </strong>
+
+                                {{ cancellation_policy.fee_percent }}%
+
+                                <br>
+
+                                <strong>
+                                    Expected refund:
+                                </strong>
+
+                                ₹{{ "{:,.2f}".format(expected_refund or 0) }}
+
+                            </div>
+
+                            {% endif %}
+
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         CANCEL BOOKING
+                    ================================================== -->
+
+                    <div class="card border-danger mb-4">
+
+                        <div class="card-body text-center">
+
+                            <h5 class="fw-bold text-danger mb-2">
+
+                                <i class="bi bi-x-circle me-2"></i>
+
+                                Cancel This Booking
+
+                            </h5>
+
+
+                            <p class="text-muted mb-3">
+
+                                You can cancel this confirmed booking.
+                                The applicable cancellation fee will be
+                                deducted automatically according to the
+                                cancellation policy.
+
+                            </p>
+
+
+                            <form
+                                action="{{ url_for('cancel_booking', booking_id=booking.id) }}"
+                                method="post"
+                                onsubmit="return confirm('Are you sure you want to cancel this booking? The cancellation fee will be deducted according to the cancellation policy.');"
+                            >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger fw-semibold px-4"
+                                >
+
+                                    <i class="bi bi-x-circle-fill me-1"></i>
+
+                                    Cancel Booking
+
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                    {% endif %}
+
+
+                    <!-- =================================================
+                         MESSAGE
+                    ================================================== -->
+
+                    {% if booking.status == 'Cancelled' %}
+
+                    <div class="alert alert-danger text-center">
+
+                        <i class="bi bi-x-circle me-1"></i>
+
+                        This booking is cancelled and cannot be cancelled
+                        again.
+
+                    </div>
+
+                    {% else %}
+
+                    <div class="alert alert-success text-center">
+
+                        <i class="bi bi-check-circle me-1"></i>
+
+                        Please keep this booking pass for your records.
+
+                    </div>
+
+                    {% endif %}
+
+
+                    <!-- =================================================
+                         BUTTONS
+                    ================================================== -->
+
+                    <div class="text-center mt-4">
+
+
+                        <button
+                            onclick="window.print()"
+                            class="btn btn-dark me-2"
+                        >
+
+                            <i class="bi bi-printer"></i>
+
+                            Print Pass
+
+                        </button>
+
+
+                        <a
+                            href="{{ url_for('index') }}"
+                            class="btn btn-warning"
+                        >
+
+                            <i class="bi bi-arrow-left me-1"></i>
+
+                            Back to Packages
+
+                        </a>
+
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     PRINT STYLES
+========================================================= -->
+
+<style>
+
+@media print {
+
+    nav,
+    footer,
+    .btn,
+    form,
+    .card.border-danger,
+    .card.border-warning {
+        display: none !important;
+    }
+
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+
+
+    body {
+        background: white !important;
+    }
+
+
+    .container {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+}
+
+</style>
+
+
+{% endblock %}
+
